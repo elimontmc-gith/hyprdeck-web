@@ -26,6 +26,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/dbhealth', async (req, res) => {
+  const data = await fetch('https://status.supabase.com/api/v2/status.json');
+  const json = await data.json();
+  const status = json.status.description;
+  res.json({ status: status });
+});
+
 /* ===========================
    DATA ROUTE
    /data/:table
