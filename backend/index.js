@@ -39,12 +39,10 @@ app.get('/data/:table', async (req, res) => {
   const { q, fuzzy, ...filters } = req.query;
 
   try {
-    // 1️⃣ Validate table
     if (!allowedTables.includes(table)) {
       return res.status(400).json({ error: 'Invalid table name' });
     }
 
-    // 2️⃣ Get table schema
     const columns = await sql`
       SELECT column_name, data_type
       FROM information_schema.columns
@@ -60,20 +58,15 @@ app.get('/data/:table', async (req, res) => {
       )
       .map(c => c.column_name);
 
-    // 3️⃣ If no filters and no search → return all rows
+    // No filters and no search → return all
     if (!q && Object.keys(filters).length === 0) {
-      const rows = await sql`
-        SELECT * FROM ${sql(table)}
-      `;
+      const rows = await sql`SELECT * FROM ${sql(table)}`;
       return res.json(rows);
     }
 
     const conditions = [];
 
-    /* ===========================
-       COLUMN FILTERS (?id=1&name=alice)
-    =========================== */
-
+    // Column filters
     for (const [key, value] of Object.entries(filters)) {
       if (!colNames.includes(key)) {
         return res.status(400).json({ error: `Invalid column: ${key}` });
@@ -82,16 +75,13 @@ app.get('/data/:table', async (req, res) => {
       conditions.push(sql`${sql(key)} = ${value}`);
     }
 
-    /* ===========================
-       GLOBAL SEARCH (?q=alice)
-    =========================== */
-
+    // Global search
     if (q) {
       if (textColumns.length === 0) {
         return res.status(400).json({ error: 'No searchable text columns' });
       }
 
-      const searchConditions = textColumns.map(col => {
+      const searchParts = textColumns.map(col => {
         if (fuzzy === 'true') {
           return sql`${sql(col)} ILIKE ${'%' + q + '%'}`;
         } else {
@@ -99,18 +89,12 @@ app.get('/data/:table', async (req, res) => {
         }
       });
 
-      conditions.push(
-        sql`(${sql.join(searchConditions, sql` OR `)})`
-      );
+      conditions.push(sql`(${sql(searchParts, ' OR ')})`);
     }
-
-    /* ===========================
-       FINAL QUERY
-    =========================== */
 
     const rows = await sql`
       SELECT * FROM ${sql(table)}
-      WHERE ${sql.join(conditions, sql` AND `)}
+      WHERE ${sql(conditions, ' AND ')}
     `;
 
     if (rows.length === 0) {
