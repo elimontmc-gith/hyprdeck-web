@@ -13,10 +13,10 @@ export async function request<T = unknown>(
 ): Promise<T | string | Response> {
   const fullUrl = buildUri(url, endpoint);
 
-  const headers: HeadersInit = { ...opts.headers };
+  const headers = new Headers(opts.headers);
 
   if (opts.body && !(opts.body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
+    headers.set("Content-Type", "application/json");
   }
 
   console.debug("Request:", { url: fullUrl, options: opts, parse });
