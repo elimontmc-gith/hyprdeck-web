@@ -58,21 +58,25 @@ app.get('/data/:table', async (req, res) => {
       )
       .map(c => c.column_name);
 
-    // No filters and no search → return all
+    // No filters, no search
     if (!q && Object.keys(filters).length === 0) {
-      const rows = await sql`SELECT * FROM ${sql(table)}`;
+      const rows = await sql`
+        SELECT * FROM ${sql.identifier([table])}
+      `;
       return res.json(rows);
     }
 
     const conditions = [];
 
-    // Column filters
+    // Column filters (?name=Alice)
     for (const [key, value] of Object.entries(filters)) {
       if (!colNames.includes(key)) {
         return res.status(400).json({ error: `Invalid column: ${key}` });
       }
 
-      conditions.push(sql`${sql(key)} = ${value}`);
+      conditions.push(sql`
+        ${sql.identifier([key])} = ${value}
+      `);
     }
 
     // Global search
@@ -83,9 +87,13 @@ app.get('/data/:table', async (req, res) => {
 
       const searchParts = textColumns.map(col => {
         if (fuzzy === 'true') {
-          return sql`${sql(col)} ILIKE ${'%' + q + '%'}`;
+          return sql`
+            ${sql.identifier([col])} ILIKE ${'%' + q + '%'}
+          `;
         } else {
-          return sql`${sql(col)} = ${q}`;
+          return sql`
+            ${sql.identifier([col])} = ${q}
+          `;
         }
       });
 
@@ -93,7 +101,7 @@ app.get('/data/:table', async (req, res) => {
     }
 
     const rows = await sql`
-      SELECT * FROM ${sql(table)}
+      SELECT * FROM ${sql.identifier([table])}
       WHERE ${sql(conditions, ' AND ')}
     `;
 
