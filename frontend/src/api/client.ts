@@ -1,4 +1,4 @@
-const API_URL = "https://hyprdeck-web.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL;
 
 function buildUri(url: string, endpoint?: string): string {
   if (!endpoint) return url;
